@@ -123,4 +123,12 @@ public class EnemyGizmo : MonoBehaviour
     void getKilled(){
         gameObject.SetActive(false);
     }
+
+    void OnCollisionEnter2D(Collision2D collision){
+        //Daño al jugador
+        if(collision.gameObject.CompareTag("Player")){
+            // AudioManager.obj.playHit();
+            Player.obj.getDamage();
+        }
+    }
 }

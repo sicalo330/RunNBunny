@@ -15,15 +15,14 @@ public class Player : MonoBehaviour
     public float lives = 3f;
     public float groundRayDist = 0.5f;
     public float inmuneTimeCnt = 0f;
-    public float inmuneTime = 0.5f;
+    public float inmuneTime = 2f;
     public bool isGrounded = false;
     public bool isShoot = false;
     public bool knife = false;
     public bool isMoving = false;
-    public bool isInmune = false;
+    public bool isInmune;
     public LayerMask groundLayer;
     public static Player obj;
-    private SpriteRenderer spr;
 
     [SerializeField] private GameObject bulletPrefab;
     [SerializeField] private Transform firingPoint;
@@ -34,7 +33,7 @@ public class Player : MonoBehaviour
     {
         obj = this;
         rb = GetComponent<Rigidbody2D>();
-        spr = GetComponent<SpriteRenderer>();
+        isInmune = false; // Asegúrate de que no sea inmune al inicio
         // anim = GetComponent<Animator>();
     }
 
@@ -65,12 +64,12 @@ public class Player : MonoBehaviour
         }
 
         if(isInmune){
-            spr.enabled = !spr.enabled;
+            Debug.Log("Inmune");
             //Lode abajo hace que el sprite parpadee
             inmuneTimeCnt -= Time.deltaTime;
             if(inmuneTimeCnt <= 0){
+                Debug.Log("ya no es inmune");
                 isInmune = false;
-                spr.enabled = true;
             }
         }
     }
@@ -85,10 +84,14 @@ public class Player : MonoBehaviour
     private void goImmune(){
         isInmune = true;
         inmuneTimeCnt = inmuneTime;
+        Debug.Log(inmuneTime);
     }
 
     public void getDamage(){
-        Debug.Log("Player recibió daño");
+        if (isInmune) {
+            Debug.Log("El jugador está inmune, no recibe daño.");
+            return; // Salir si ya es inmune
+        }
         lives --;
         // AudioManager.obj.playHit();
         // UIManager.obj.updateLives();
@@ -96,8 +99,9 @@ public class Player : MonoBehaviour
         //Esta función sirve para volver inmune por unos segundos al personaje
         goImmune();
         if(lives <= 0){
-            FXManager.obj.showPop(transform.position);
-            Game.obj.gameOver();
+            Debug.Log("gameOver");
+            // FXManager.obj.showPop(transform.position);
+            // Game.obj.gameOver();
         }
     }
     void shootMove(){
