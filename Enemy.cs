@@ -41,19 +41,6 @@ public class Enemy : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
-        //-----------------Esta es la persecución del enemigo-----------------
-        // Debug.Log(layerPlayer);
-        // Collider2D playerCollider = Physics2D.OverlapCircle(transform.position, searchRadio, layerPlayer);
-        
-        // Debug.Log(searchRadio);
-        // if (playerCollider != null){
-        //     transformPlayer = playerCollider.transform;
-        // }
-        // else{
-        // }
-        Debug.Log("algo");
-        //--------------------------------------------------------------------
-        // Algo de aquí abajo está afectando el dlip del enemigo
         // Choque con alguna pared 
         if(Physics2D.Raycast(controller.transform.position, new Vector3(movHor, 0, 0), frontCheck, groundLayer)){
             movHor = movHor * -1;
@@ -86,7 +73,6 @@ public class Enemy : MonoBehaviour
         //Daño al jugador
         if(collision.gameObject.CompareTag("Player")){
             // AudioManager.obj.playHit();
-            Debug.Log("daño para el jugador");
             Player.obj.getDamage();
         }
     }

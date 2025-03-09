@@ -2,82 +2,132 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using TMPro;
+using LitJson;
 
 public class Dialogue : MonoBehaviour
 {
-    // public TextMeshProUGUI textComponent;
-    // public string[] lines;
-    // public float textSpeed;
-    // private int index;
-    // Start is called before the first frame update
-    // [SerializeField] private GameObject dialogueMark;
-    // [SerializeField] private GameObject dialoguePanel;
-    // [SerializeField] private TMP_Text dialogueText;
-    // [SerializeField, TextArea(4,6)] private string[] dialogueLines;
-    // private float typingTime = 0.05f;
-    // private bool isPlayerInRange;
-    // private bool didDialogueStart;
-    // private int lineIndex;
+    [SerializeField] private GameObject dialogueMark; // Icono para indicar que se puede hablar
+    [SerializeField] private GameObject dialoguePanel; // Panel de diálogo
+    [SerializeField] private TMP_Text dialogueText; // Texto donde se muestra el diálogo
+    [SerializeField] private float typingTime = 0.05f; // Velocidad de escritura del texto
 
-    // // Update is called once per frame
-    // void Update()
-    // {
-    //     if(isPlayerInRange && Input.GetButtonDown("Fire1")){
-    //         if(!didDialogueStart){
-    //             StartDialogue();
-    //         }
-    //         else if(dialogueText.text == dialogueLines[lineIndex]){
-    //             NextDialogue();
-    //         }
-    //         else{
-    //             StopAllCoroutines();
-    //             dialogueText.text = dialogueLines[lineIndex];
-    //         }
-    //     }
-    // }
+    private DialogueList dialogueList; // Lista de diálogos cargados desde el JSON
+    private bool isPlayerInRange; // ¿El jugador está en rango para hablar?
+    private bool didDialogueStart; // ¿El diálogo ha comenzado?
+    private int lineIndex; // Índice de la línea actual
+    private string currentDialogueId = "greeting"; // Diálogo actual (puedes cambiarlo según la situación)
 
-    // void StartDialogue(){
-    //     didDialogueStart = true;
-    //     dialoguePanel.SetActive(true);
-    //     dialogueMark.SetActive(false);
-    //     lineIndex = 0;
-    //     Time.timeScale = 0f;
-    //     StartCoroutine(ShowLine()); 
-    // }
+    void Start()
+    {
+        LoadDialogues(); // Cargar los diálogos al inicio
+    }
 
-    // private void NextDialogue(){
-    //     lineIndex++;
-    //     //Si hay más palabras para decir, entonces que siga, sino entonces se desactiva el panel
-    //     if(lineIndex < dialogueLines.Length){
-    //         StartCoroutine(ShowLine());
-    //     }
-    //     else{
-    //         didDialogueStart = false;
-    //         dialoguePanel.SetActive(false);
-    //         dialogueMark.SetActive(true);//Es decir que se puede volver a hablar con el npc
-    //         Time.timeScale = 1f;
-    //     }
-    // }
+    void LoadDialogues()
+    {
+        TextAsset jsonFile = Resources.Load<TextAsset>("Dialogues/dialogue"); //va a la carpeta en donde se encuentran los dialogos
+        
+        if (jsonFile == null){
+            Debug.LogError("No se pudo cargar el archivo JSON. Verifica la ruta en Resources."); //Si el json no se encuentra en la localidad entonces  sacará esto
+            return;
+        }
 
-    // private IEnumerator ShowLine(){
-    //     dialogueText.text = string.Empty;
-    //     foreach(char ch in dialogueLines[lineIndex]){
-    //         dialogueText.text += ch;
-    //         yield return new WaitForSecondsRealtime(typingTime);
-    //     }
-    // }
+        dialogueList = JsonMapper.ToObject<DialogueList>(jsonFile.text);//Si lo anteriorr no sucede, es porque si existe el json y lo convertirá en una lista(creo)
 
-    // private void OnTriggerEnter2D(Collider2D other) {
-    //     if(other.gameObject.CompareTag("Player")) {
-    //         isPlayerInRange = true;
-    //         dialogueMark.SetActive(true);
-    //     }
-    // }
-    // void OnTriggerExit2D(Collider2D other)
-    // {
-    //     if(other.gameObject.CompareTag("Player")) {
-    //         isPlayerInRange = false;
-    //         dialogueMark.SetActive(false);
-    //     }
-    // }
+        if (dialogueList == null || dialogueList.dialogues == null){
+            Debug.LogError("El JSON se cargó, pero no tiene diálogos válidos."); //Si el json existe pero no tiene contenido pasará esto
+        }
+    }
+
+    void Update(){
+        if (isPlayerInRange && Input.GetButtonDown("Fire1")){
+            if (!didDialogueStart){ //Si el dialogo comienza entonces irá a esta función
+                StartDialogue();
+            }
+            else if (dialogueText.text == GetCurrentLine()){ //Si el dialogo termina y hay más entonces irá al siguiente dialogo
+                NextDialogue();
+            }
+            else{
+                StopAllCoroutines(); //Esto detiene todo
+                dialogueText.text = GetCurrentLine();
+            }
+        }
+    }
+
+    void StartDialogue(){
+        didDialogueStart = true;
+        dialoguePanel.SetActive(true);//Esto mostrará el panel
+        dialogueText.gameObject.SetActive(true);//Esto mostrará el texto
+        dialogueMark.SetActive(false); //Borrará la marca de exclamación
+        lineIndex = 0;
+        Time.timeScale = 0f; // Pausar el juego
+        StartCoroutine(ShowLine());
+    }
+
+    void NextDialogue(){
+        lineIndex++;
+        if (lineIndex < GetCurrentDialogue().lines.Length){
+            StartCoroutine(ShowLine());
+        }
+        else{
+            didDialogueStart = false;
+            dialoguePanel.SetActive(false);
+            dialogueMark.SetActive(true);
+            dialogueText.gameObject.SetActive(true);
+            Time.timeScale = 1f; // Reanudar el juego
+        }
+    }
+
+    IEnumerator ShowLine(){
+        dialogueText.text = string.Empty;
+        foreach (char ch in GetCurrentLine()){
+            dialogueText.text += ch;
+            yield return new WaitForSecondsRealtime(typingTime);
+        }
+    }
+
+    DialogueData GetCurrentDialogue(){
+        foreach (var dialogue in dialogueList.dialogues){
+            if (dialogue.id == currentDialogueId){
+                return dialogue;
+            }
+        }
+        return null;
+    }
+
+    string GetCurrentLine(){
+        DialogueData dialogue = GetCurrentDialogue();
+        if (dialogue == null){
+            Debug.LogError($"No se encontró un diálogo con el ID '{currentDialogueId}'");
+            return " "; // Evitar que el texto sea nulo devolviendo un espacio
+        }
+
+        if (lineIndex >= dialogue.lines.Length){
+            Debug.LogError($"El índice de línea {lineIndex} está fuera de rango.");
+            return " ";
+        }
+        return dialogue.lines[lineIndex];
+    }
+
+
+
+    private void OnTriggerEnter2D(Collider2D other)
+    {
+        if (other.CompareTag("Player")){
+            isPlayerInRange = true;
+            dialogueMark.SetActive(true);
+        }
+    }
+
+    private void OnTriggerExit2D(Collider2D other){
+        if (other.CompareTag("Player")){
+            isPlayerInRange = false;
+            dialogueMark.SetActive(false);
+        }
+    }
+
+
+    //Getters y setters
+    public void SetCurrentDialogueId(string newId){
+        currentDialogueId = newId;
+    }
 }

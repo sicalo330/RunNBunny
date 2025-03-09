@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 
 public class Player : MonoBehaviour
 {
@@ -22,6 +23,7 @@ public class Player : MonoBehaviour
     public bool isMoving = false;
     public bool isInmune;
     public LayerMask groundLayer;
+    public string lastSpawnPoint = "SampleScene";
     public static Player obj;
 
     [SerializeField] private GameObject bulletPrefab;
@@ -34,7 +36,43 @@ public class Player : MonoBehaviour
         obj = this;
         rb = GetComponent<Rigidbody2D>();
         isInmune = false; // Asegúrate de que no sea inmune al inicio
-        // anim = GetComponent<Animator>();
+    }
+    void Awake(){
+        if (obj == null){
+            obj = this;
+            DontDestroyOnLoad(gameObject);
+            SceneManager.sceneLoaded += OnSceneLoaded; // Se suscribe al cambio de escena
+        }
+        else{
+            Destroy(gameObject);
+        }
+    }
+
+    void OnSceneLoaded(Scene scene, LoadSceneMode mode)
+    {
+
+        SpawnPoint[] spawnPoints = FindObjectsOfType<SpawnPoint>();
+        if (spawnPoints.Length == 0)
+        {
+            Debug.LogWarning("No se encontraron SpawnPoints en esta escena.");
+            return;
+        }
+
+        foreach (SpawnPoint sp in spawnPoints)
+        {
+            if (sp.spawnID == lastSpawnPoint)
+            {
+                transform.position = sp.transform.position; // Mueve al jugador
+                return;
+            }
+        }
+
+        Debug.LogWarning("No se encontró un SpawnPoint con el ID: " + lastSpawnPoint);
+    }
+
+    void OnDestroy()
+    {
+        SceneManager.sceneLoaded -= OnSceneLoaded; // Evitar duplicados
     }
 
     void Update()
@@ -64,11 +102,10 @@ public class Player : MonoBehaviour
         }
 
         if(isInmune){
-            Debug.Log("Inmune");
             //Lode abajo hace que el sprite parpadee
             inmuneTimeCnt -= Time.deltaTime;
             if(inmuneTimeCnt <= 0){
-                Debug.Log("ya no es inmune");
+
                 isInmune = false;
             }
         }
@@ -84,12 +121,10 @@ public class Player : MonoBehaviour
     private void goImmune(){
         isInmune = true;
         inmuneTimeCnt = inmuneTime;
-        Debug.Log(inmuneTime);
     }
 
     public void getDamage(){
         if (isInmune) {
-            Debug.Log("El jugador está inmune, no recibe daño.");
             return; // Salir si ya es inmune
         }
         lives --;
@@ -99,7 +134,6 @@ public class Player : MonoBehaviour
         //Esta función sirve para volver inmune por unos segundos al personaje
         goImmune();
         if(lives <= 0){
-            Debug.Log("gameOver");
             // FXManager.obj.showPop(transform.position);
             // Game.obj.gameOver();
         }
@@ -144,4 +178,9 @@ public class Player : MonoBehaviour
             transform.localScale = theScale;
         }
     }
+
+    // void ChangeScene(string sceneName, string spawnID){ //Esta función sirve para que el jugador aparezca en una posición específica durante el cambio de escenarios
+    //     lastSpawnPoint = spawnID; // Guarda el ID del punto de salida
+    //     UnityEngine.SceneManagement.SceneManager.LoadScene(sceneName);
+    // }
 }
